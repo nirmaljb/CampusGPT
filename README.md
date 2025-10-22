@@ -14,3 +14,8 @@ pip install requirments.txt
 ```
 python3 main.py
 ```
+
+### 4. Run the Main Program
+```
+python3 chat.py
+```

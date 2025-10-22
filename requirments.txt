@@ -123,7 +123,7 @@ fsspec @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_436
 gensim @ file:///Users/builder/cbouss/perseverance-python-buildout/croot/gensim_1699254328067/work
 gitdb @ file:///tmp/build/80754af9/gitdb_1617117951232/work
 GitPython @ file:///private/var/folders/k1/30mswbxs7r1g6zwn8y4fyt500000gp/T/abs_ebpnpowk3c/croot/gitpython_1720455037823/work
-google-ai-generativelanguage==0.6.18
+google-ai-generativelanguage==0.9.0
 google-api-core==2.25.1
 google-auth==2.39.0
 google-genai==1.11.0
@@ -196,7 +196,7 @@ langchain==0.3.25
 langchain-classic==1.0.0
 langchain-community==0.4
 langchain-core==1.0.0
-langchain-google-genai==2.1.5
+langchain-google-genai==3.0.0
 langchain-qdrant==1.0.0
 langchain-tavily==0.2.4
 langchain-text-splitters==1.0.0
