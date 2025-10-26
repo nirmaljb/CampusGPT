@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-pdf_path = Path(__file__).parent / "pondi.pdf"
+pdf_path = Path(__file__).parent / "pondiuni_nirf.pdf"
 loader = PyPDFLoader(pdf_path)
 docs = loader.load()
 
