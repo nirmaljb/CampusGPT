@@ -7,14 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 pdf_path = Path(__file__).parent / "pondiuni_nirf.pdf"
 loader = PyPDFLoader(pdf_path)
 docs = loader.load()
 
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=250,
-    chunk_overlap=40,
+    chunk_size=1000,
+    chunk_overlap=400,
 )
 
 embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")

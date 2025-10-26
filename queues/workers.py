@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
@@ -20,7 +23,7 @@ def process_query(query: str):
 
     SYSTEM_PROMPT = f"""
         You're a helpful AI Assistant who answers user's queries based on the available context retrieved from the pdf file along with page contents and page number.
-        You should only answer user's queries based on the context provided and navigate the user the page number for more information
+        You should only answer user's queries based on the context provided
         Context: {context}
     """
 
