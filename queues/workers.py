@@ -10,16 +10,16 @@ llm = ChatGoogleGenerativeAI(
     max_retries=2
 )
 
-embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 vector_db = QdrantVectorStore.from_existing_collection(
     url="http://localhost:6333",
-    collection_name="NIRF Information",
+    collection_name="PONDICHERRY_UNIVERSITY_INFO",
     embedding=embeddings
 )
 
 def process_query(query: str):
     search_result = vector_db.similarity_search(query=query)
-    context = "\n\n".join([f"Page content: {result.page_content}\nPage number: {result.metadata['page_label']}" for result in search_result])
+    context = "\n\n".join([f"Page content: {result.page_content}\n" for result in search_result])
 
     SYSTEM_PROMPT = f"""
         You're a helpful AI Assistant who answers user's queries based on the available context retrieved from the pdf file along with page contents and page number.
