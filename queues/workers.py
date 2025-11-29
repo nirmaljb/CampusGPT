@@ -20,6 +20,7 @@ vector_db = QdrantVectorStore.from_existing_collection(
 def process_query(query: str):
     search_result = vector_db.similarity_search(query=query)
     context = "\n\n".join([f"Page content: {result.page_content}\n" for result in search_result])
+    print(context)
 
     SYSTEM_PROMPT = f"""
         You're a helpful AI Assistant who answers user's queries based on the available context retrieved from the pdf file along with page contents and page number.

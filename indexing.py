@@ -42,20 +42,19 @@ for doc in md_docs:
                 if "-----" in str(row.iloc[0]): 
                     continue 
                 
-                # Helper function to safely get string values
                 def safe_strip(value, default='Unknown'):
                     return value.strip() if pd.notna(value) and value else default
                 
                 content_string = (
                     f"Faculty Record for {safe_strip(row['Name'])}: "
                     f"Designation: {safe_strip(row['Designation'])}, "
-                    f"Age: {int(row['Age']) if pd.notna(row['Age']) else 0}, "
+                    f"Age: {row['Age'] if pd.notna(row['Age']) else 0}, "
                     f"Gender: {safe_strip(row['Gender'])}, "
                     f"Qualification: {safe_strip(row['Qualification'])}, "
-                    f"Experience: {int(row['Experience (Years)']) if pd.notna(row['Experience (Years)']) else 0} years, "
+                    f"Experience: {row['Experience (Years)'] if pd.notna(row['Experience (Years)']) else 0} years, "
                     f"Department Association: {safe_strip(row['Association Type'])}. "
                     f"Joining Date: {safe_strip(row['Joining Date'])}. "
-                    f"Currently working with institution?: {safe_strip(row['Currently working with institution?'])}. "
+                    f"Currently working with institution?: {safe_strip(row['Currently Working'])}. "
                     f"Leaving Date: {safe_strip(row['Leaving Date'])}"
                 )
                 
@@ -67,12 +66,12 @@ for doc in md_docs:
                         "designation": safe_strip(row['Designation']),
                         "association": safe_strip(row['Association Type']),
                         "joining_date": safe_strip(row['Joining Date']),
-                        "currently_working": safe_strip(row['Currently working with institution?']),
+                        "currently_working": safe_strip(row['Currently Working']),
                         "leaving_date": safe_strip(row['Leaving Date']),
                         "gender": safe_strip(row['Gender']),
-                        "age": int(row['Age']) if pd.notna(row['Age']) else 0,
+                        "age": row['Age'] if pd.notna(row['Age']) else 0,
                         "qualification": safe_strip(row['Qualification']),
-                        "experience": int(row['Experience (Years)']) if pd.notna(row['Experience (Years)']) else 0,
+                        "experience": row['Experience (Years)'] if pd.notna(row['Experience (Years)']) else 0,
                     }
                 )
                 final_documents.append(new_doc)
