@@ -15,6 +15,7 @@ final_documents = []
 
 for doc in md_docs:
     section_name = doc.metadata.get("Section", "")
+    print(section_name)
     if "Faculty Details" in section_name:
         try:
             df = pd.read_csv(
@@ -26,11 +27,10 @@ for doc in md_docs:
             
             df.columns = df.columns.str.strip()
 
-            print(df.columns)
-
             for index, row in df.iterrows():
                 if "-----" in str(row.iloc[0]): 
                     continue
+
                 
                 def safe_strip(value, default='Unknown'):
                     return value.strip() if pd.notna(value) and value else default

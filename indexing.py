@@ -1,17 +1,13 @@
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_core.documents import Document
-from langchain_qdrant import Qdrant
+from langchain_core.documents import Document 
 from langchain_qdrant import QdrantVectorStore
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
 from dotenv import load_dotenv
 import pandas as pd
 import io
 
 load_dotenv()
 
-# 1. Load your clean Markdown content
 with open("./data/pondiuni_clean_final.md", "r") as f:
     md_content = f.read()
 
@@ -22,7 +18,13 @@ headers_to_split_on = [
 markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
 md_docs = markdown_splitter.split_text(md_content)
 
-final_documents = []
+normal_document = []
+faculty_document = []
+
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/gemini-embedding-001",
+    task_type="RETRIEVAL_DOCUMENT"
+)
 
 for doc in md_docs:
     section_name = doc.metadata.get("Section", "")
@@ -74,29 +76,32 @@ for doc in md_docs:
                         "experience": row['Experience (Years)'] if pd.notna(row['Experience (Years)']) else 0,
                     }
                 )
-                final_documents.append(new_doc)
+                faculty_document.append(new_doc)
                 
         except Exception as e:
             print(f"Error parsing faculty table: {e}")
 
     else:
         doc.page_content = f"Section: {section_name}\n\n" + doc.page_content
-        final_documents.append(doc)
+        normal_document.append(doc)
 
-print(f"Total Documents Created: {len(final_documents)}")
-print(f"Example Faculty Doc: {final_documents[-1].page_content}")
-
-embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/text-embedding-004",
-    task_type="retrieval_document"
-)
 
 url = "http://localhost:6333"
-collection_name = "PONDICHERRY_UNIVERSITY_INFO"
+collection_name_normal = "PONDICHERRY_UNIVERSITY_INFO_NORMAL"
+collection_name_faculty = "PONDICHERRY_UNIVERSITY_INFO_FACULTY"
 
+faculty_document = faculty_document[450:500]
+print(faculty_document)
+
+# vector_store = QdrantVectorStore.from_documents(
+#     url=url,
+#     documents=normal_document,
+#     embedding=embeddings,
+#     collection_name=collection_name_normal,
+# )
 vector_store = QdrantVectorStore.from_documents(
     url=url,
-    documents=final_documents,
+    documents=faculty_document,
     embedding=embeddings,
-    collection_name=collection_name,
+    collection_name=collection_name_normal,
 )
