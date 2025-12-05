@@ -91,7 +91,9 @@ collection_name_normal = "PONDICHERRY_UNIVERSITY_INFO_NORMAL"
 collection_name_faculty = "PONDICHERRY_UNIVERSITY_INFO_FACULTY"
 
 faculty_document = faculty_document[450:500]
-print(faculty_document)
+# print(faculty_document)
+
+
 
 # vector_store = QdrantVectorStore.from_documents(
 #     url=url,
@@ -99,9 +101,9 @@ print(faculty_document)
 #     embedding=embeddings,
 #     collection_name=collection_name_normal,
 # )
-vector_store = QdrantVectorStore.from_documents(
-    url=url,
-    documents=faculty_document,
-    embedding=embeddings,
-    collection_name=collection_name_normal,
-)
+# vector_store = QdrantVectorStore.from_documents(
+#     url=url,
+#     documents=faculty_document,
+#     embedding=embeddings,
+#     collection_name=collection_name_normal,
+# )

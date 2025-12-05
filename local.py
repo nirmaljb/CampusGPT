@@ -15,6 +15,7 @@ model = ChatGoogleGenerativeAI(
 model_with_search = model.bind_tools([{"google_search": {}}])
 
 embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+
 vector_db = QdrantVectorStore.from_existing_collection(
     url="http://localhost:6333",
     collection_name="PONDICHERRY_UNIVERSITY_INFO",
