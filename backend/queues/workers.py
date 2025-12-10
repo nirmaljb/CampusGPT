@@ -1,0 +1,51 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_qdrant import QdrantVectorStore
+
+model = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    max_retries=2
+)
+
+model_with_search = model.bind_tools([{"google_search": {}}])
+
+embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+
+vector_db = QdrantVectorStore.from_existing_collection(
+    url="http://localhost:6333",
+    collection_name="PONDICHERRY_UNIVERSITY_INFO",
+    embedding=embeddings
+)
+
+def process_query(query: str):    
+    search_result = vector_db.similarity_search(query=query)
+    context = "\n\n".join([f"{result.page_content}\n" for result in search_result])
+
+    SYSTEM_PROMPT = f"""
+        You're an expert consultant for Pondicherry University management and students.
+
+        **Instructions:**
+        1. First, analyze the INTERNAL DATABASE CONTEXT below
+        2. Use Google Search to find current information and verify/supplement the internal data
+        3. Cross-check information from both sources
+        4. Merge and present comprehensive, accurate information
+        5. Use tables where appropriate for clarity
+        6. Ensure output is clean and highly readable
+
+        **INTERNAL DATABASE CONTEXT:**
+        {context}
+
+        ---
+        Now answer the user's query using both the internal context and web search results.
+    """
+
+    messages = [
+        ("system",SYSTEM_PROMPT),
+        ("human", query),
+    ]
+
+    llm_response = model_with_search.invoke(messages)
+    return llm_response.content
