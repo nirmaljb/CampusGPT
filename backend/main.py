@@ -23,7 +23,7 @@ vector_db = QdrantVectorStore.from_existing_collection(
     embedding=embeddings
 )
 
-def process_query(state: MessagesState):    
+def process_query(state: State):    
     search_result = vector_db.similarity_search(query=state['messages'][-1])
     context = "\n\n".join([f"{result.page_content}\n" for result in search_result])
 
