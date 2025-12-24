@@ -1,16 +1,16 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langchain.messages import SystemMessage, HumanMessage
-from langgraph.checkpoint.memory import InMemorySaver  
 from langchain_core.runnables import RunnableConfig
 from langchain_ollama import ChatOllama
 from langchain.tools import tool
 from langgraph.prebuilt import ToolNode
+from langgraph.checkpoint.memory import MemorySaver
+
 
 class State(MessagesState):
     messages: list[str]
@@ -18,10 +18,8 @@ class State(MessagesState):
 model = ChatOllama(
     model="llama3.2"
 )
-
-# model_with_search = model.bind_tools([{"google_search": {}}]
+memory = MemorySaver()
 embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-
 vector_db = QdrantVectorStore.from_existing_collection(
     url="http://localhost:6333",
     collection_name="PONDICHERRY_UNIVERSITY_INFO",
@@ -30,9 +28,27 @@ vector_db = QdrantVectorStore.from_existing_collection(
 
 @tool
 def retrieve_docs(query: str) -> str:
-    """Search and return information about Pondicherry University."""
-    search_result = vector_db.similarity_search(query=query)
-    context = "\n\n".join([f"{result.page_content}\n" for result in search_result])
+    """Search internal database for SPECIFIC information about Pondicherry University.
+    
+    Use this tool ONLY for queries about:
+    - University courses, programs, admissions
+    - Faculty, departments, research
+    - Funding, grants, finances
+    - Facilities, campus information
+    - Policies, procedures, academics
+    
+    DO NOT use for: greetings, general conversation, or vague queries.
+    """
+    search_result = vector_db.similarity_search(query=query, k=3)
+
+    print("Search result: ", search_result)
+
+    relevant_docs = [(doc,score) for doc, score in search_result if score < 0.7]
+    
+    if not relevant_docs:
+        return "No relevant information found in the database."
+    
+    context = "\n\n".join([f"{result.page_content}\n" for result, _ in relevant_docs])
 
     return context
 
@@ -41,31 +57,27 @@ model_with_tools = model.bind_tools([retrieve_docs])
 
 def should_continue(state: State):
     """Determine if we should continue to tools or end."""
+    print("Continue State :", state)
     last_message = state['messages'][-1]
     if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
         return "tools"
     return END
 
-def call_model(state: State):    
-    """Call the model to generate a response based on the current state. Given
-    the question, it will decide to retrieve using the retriever tool, or simply respond to the user.
-    """
+def call_model(state: State):
+    SYSTEM_PROMPT = """You're an expert consultant for Pondicherry University.
+        **TOOL USAGE GUIDELINES:**
+        - Use 'retrieve_docs' ONLY for specific questions about Pondicherry University (courses, admissions, faculty, funding, facilities, etc.)
+        - DO NOT use tools for: greetings, casual conversation, general questions, or chitchat
+        - For simple greetings like "hi", "hello", "how are you", respond naturally WITHOUT using tools
 
-    SYSTEM_PROMPT = f"""
-        You're an expert consultant for Pondicherry University management and students.
-        
-        **Instructions:**
-        1. Use the retrieved information to answer user queries when needed
-        2. Ensure output is clean and highly readable
-        ---
-        Now answer the user's query using the retrieved context.
+        **Your Role:**
+        Answer questions about Pondicherry University using the retrieve_docs tool when needed.
     """
-    print(state)
+    print("Agent State: ", state)
     messages = [SystemMessage(SYSTEM_PROMPT)] + state['messages']
-    print(messages)
-    llm_response = model_with_tools.invoke(messages)
-    
-    return { "messages": [llm_response] }
+    response = model_with_tools.invoke(messages)
+
+    return { "messages": response }
 
 builder = StateGraph(State)
 tools = ToolNode([retrieve_docs])
@@ -77,7 +89,7 @@ builder.add_edge(START, "agent_call")
 builder.add_conditional_edges("agent_call", should_continue, ["tools", END])
 builder.add_edge("tools", "agent_call")
 
-agent = builder.compile()
+agent = builder.compile(checkpointer=memory)
 config: RunnableConfig = {"configurable": {"thread_id": "1"}}
 
 
@@ -86,6 +98,6 @@ while(True):
     if user_input == 'x':
         break
 
-    response = agent.invoke({"messages": [HumanMessage(user_input)]})
+    response = agent.invoke({"messages": [{"role": "user", "content": user_input}]}, config)
 
     print(response)
