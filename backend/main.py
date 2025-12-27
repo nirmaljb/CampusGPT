@@ -6,18 +6,20 @@ from langchain_qdrant import QdrantVectorStore
 from langgraph.graph import MessagesState, StateGraph, START, END
 from langchain.messages import SystemMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
-from langchain_ollama import ChatOllama
 from langchain.tools import tool
-from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_groq import ChatGroq
+import pprint
 
 
 class State(MessagesState):
     messages: list[str]
 
-model = ChatOllama(
-    model="llama3.2"
+model = ChatGroq(
+    model="llama-3.3-70b-versatile"
 )
+
 memory = MemorySaver()
 embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 vector_db = QdrantVectorStore.from_existing_collection(
@@ -39,7 +41,8 @@ def retrieve_docs(query: str) -> str:
     
     DO NOT use for: greetings, general conversation, or vague queries.
     """
-    search_result = vector_db.similarity_search(query=query, k=3)
+    print("RETRIEVE DOCS QUERY: ",  query)
+    search_result = vector_db.similarity_search_with_score(query=query, k=3)
 
     print("Search result: ", search_result)
 
@@ -51,17 +54,7 @@ def retrieve_docs(query: str) -> str:
     context = "\n\n".join([f"{result.page_content}\n" for result, _ in relevant_docs])
 
     return context
-
 model_with_tools = model.bind_tools([retrieve_docs])
-
-
-def should_continue(state: State):
-    """Determine if we should continue to tools or end."""
-    print("Continue State :", state)
-    last_message = state['messages'][-1]
-    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        return "tools"
-    return END
 
 def call_model(state: State):
     SYSTEM_PROMPT = """You're an expert consultant for Pondicherry University.
@@ -76,18 +69,28 @@ def call_model(state: State):
     print("Agent State: ", state)
     messages = [SystemMessage(SYSTEM_PROMPT)] + state['messages']
     response = model_with_tools.invoke(messages)
+    
+    pprint.pprint(response)
 
-    return { "messages": response }
+    return { "messages": [response] }
 
 builder = StateGraph(State)
 tools = ToolNode([retrieve_docs])
 
 builder.add_node("agent_call", call_model)
-builder.add_node("tools", tools)
+builder.add_node("retrieve", tools)
 
 builder.add_edge(START, "agent_call")
-builder.add_conditional_edges("agent_call", should_continue, ["tools", END])
-builder.add_edge("tools", "agent_call")
+builder.add_conditional_edges(
+    "agent_call",
+    tools_condition,
+    {
+        "tools": "retrieve",
+        END: END,
+    }
+)
+builder.add_edge("retrieve", "agent_call")
+# builder.add_edge("agent_call", END)
 
 agent = builder.compile(checkpointer=memory)
 config: RunnableConfig = {"configurable": {"thread_id": "1"}}
@@ -98,6 +101,9 @@ while(True):
     if user_input == 'x':
         break
 
-    response = agent.invoke({"messages": [{"role": "user", "content": user_input}]}, config)
-
-    print(response)
+    for event in agent.stream(
+        {"messages": [{"role": "user", "content": user_input}]},
+        stream_mode="values",
+        config=config,
+    ):
+        pprint.pprint(event['messages'])
