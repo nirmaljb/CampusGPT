@@ -9,7 +9,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_tavily import TavilySearch
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, NotRequired
 from typing import List
 from langchain_core.documents import Document
 from langgraph.graph import END, StateGraph
@@ -185,11 +185,17 @@ class GraphState(TypedDict):
         generation: LLM generation
         web_search: whether to add search
         documents: list of documents 
+        retry_count: hallucination retry attempts
+        limit_exhausted: whether retry cap was hit
+        decision: scratch key for routing decisions
     """
     question : str
     generation : str
     web_search : str
-    documents : List[str]
+    documents : List[Document]
+    retry_count: NotRequired[int]
+    limit_exhausted: NotRequired[bool]
+    decision: NotRequired[str]
 
 # Nodes
 def retrieve(state):
@@ -389,6 +395,38 @@ def grade_generation_v_documents_and_question(state):
         print(f'question: {question}, documents: {documents}, generation: {generation}, grade: {grade}')
         return "not supported"
 
+
+def handle_hallucination(state):
+    """
+    Track hallucination retries and decide next step.
+    After MAX_RETRIES, do one websearch fallback; if still ungrounded, return the last generation with a warning.
+    """
+
+    MAX_RETRIES = 3
+    retry_count = state.get("retry_count", 0) + 1
+    limit_exhausted = state.get("limit_exhausted", False)
+
+    # Bubble retry count through state
+    state = {**state, "retry_count": retry_count}
+
+    if retry_count >= MAX_RETRIES:
+        if limit_exhausted:
+            generation = state.get("generation", "")
+            warning = "\n\n[Note: Verification limit reached after 3 attempts; consider more sources.]"
+            state["generation"] = f"{generation}{warning}"
+            state["decision"] = "force_return"
+            return state
+
+        # First time hitting the limit: trigger a web search fallback once
+        state["web_search"] = "Yes"
+        state["limit_exhausted"] = True
+        state["decision"] = "fallback_websearch"
+        return state
+
+    # Under retry limit → try generating again
+    state["decision"] = "retry"
+    return state
+
 # Build workflow
 workflow = StateGraph(GraphState)
 
@@ -419,13 +457,25 @@ workflow.add_conditional_edges(
     },
 )
 workflow.add_edge("websearch", "generate")
+workflow.add_node("handle_hallucination", handle_hallucination)
+
 workflow.add_conditional_edges(
     "generate",
     grade_generation_v_documents_and_question,
     {
-        "not supported": "generate",
+        "not supported": "handle_hallucination",
         "useful": END,
         "not useful": "websearch",
+    },
+)
+
+workflow.add_conditional_edges(
+    "handle_hallucination",
+    lambda state: state.get("decision", "retry"),
+    {
+        "retry": "generate",
+        "fallback_websearch": "websearch",
+        "force_return": END,
     },
 )
 workflow.set_finish_point("basic_response")

@@ -1,7 +1,7 @@
+import UserInput from "@/components/UserInput";
+
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      Hello, World
-    </div>
+    <UserInput />
   );
 }
