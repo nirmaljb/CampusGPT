@@ -1,0 +1,12 @@
+# .gitignore
+.env
+.env.local
+.env.*.local
+backend/agent/.env
+
+# Add other common ignores
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+venv/
